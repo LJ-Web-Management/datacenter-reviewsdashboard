@@ -1,4 +1,6 @@
-# Review Replies — Google review auto-reply dashboard
+# datacentertraining.us — Review Replies
+
+Google review auto-reply dashboard for **datacentertraining.us**. The logo, colours and demo data are in `brand/` (see [Branding](#branding)).
 
 A secure admin panel that pulls your Google reviews, drafts a reply to each one with OpenAI, and posts the reply to Google once you approve it, or automatically for the star ratings you choose.
 

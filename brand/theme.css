@@ -1,0 +1,32 @@
+/* datacentertraining.us theme: indigo #4f46e5 (colours taken from datacentertraining.us) */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --page: #f6f6f9;
+  --surface: #fdfdff;
+  --surface-2: #f0f0f6;
+  --surface-hover: #f2f2f8;
+  --text: #101010;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #edecfc;
+  --accent-text: #4338ca;
+  --brand-2: #a070f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0b0b12;
+    --surface: #16161f;
+    --surface-2: #1f1f2b;
+    --surface-hover: #21212e;
+    --text: #f1f0f7;
+    --accent: #4f46e5;
+    --accent-hover: #5b53ee;
+    --accent-soft: #221f4d;
+    --accent-text: #a5b4fc;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0b0b12; --surface: #16161f; --surface-2: #1f1f2b; --surface-hover: #21212e; --text: #f1f0f7;
+  --accent: #4f46e5; --accent-hover: #5b53ee; --accent-soft: #221f4d; --accent-text: #a5b4fc;
+}
+h1, h2, .tile .value { letter-spacing: -0.02em; }

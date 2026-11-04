@@ -1,1 +1,10 @@
-{ "name": "Review Replies", "appName": "Review Replies" }
+{
+  "name": "datacentertraining.us",
+  "appName": "Review Replies",
+  "businessName": "datacentertraining.us",
+  "website": "https://datacentertraining.us",
+  "logo": "logo.png",
+  "logoDark": "logo-dark.png",
+  "favicon": "favicon.png",
+  "appleTouchIcon": "apple-touch-icon.png"
+}

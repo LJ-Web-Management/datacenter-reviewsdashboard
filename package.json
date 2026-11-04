@@ -1,8 +1,8 @@
 {
-  "name": "review-reply-admin",
+  "name": "datacenter-reviewsdashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "Admin panel that drafts Google review replies with OpenAI and posts them to Google Business Profile.",
+  "description": "datacentertraining.us admin panel that drafts Google review replies with OpenAI, auto-approves chosen ratings, and tracks review analytics and API costs.",
   "type": "module",
   "main": "server/index.js",
   "engines": {

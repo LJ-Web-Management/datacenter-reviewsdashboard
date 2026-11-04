@@ -1,0 +1,300 @@
+{
+ "thing": "the course",
+ "signoff": "— The datacentertraining.us team",
+ "seed": [
+  [
+   "Marcus Johnson",
+   5,
+   "The UPS and generator course finally made our transfer switch procedures click. Clear diagrams and real examples.",
+   1,
+   "pending"
+  ],
+  [
+   "Elena Petrova",
+   4,
+   "Very thorough cooling module. A few more worked examples on airflow management would make it perfect.",
+   2,
+   "pending"
+  ],
+  [
+   "Derek Lawson",
+   2,
+   "Videos kept buffering on our site network and the progress tracker reset twice. The content looks solid though.",
+   2,
+   "pending"
+  ],
+  [
+   "A Google User",
+   5,
+   "",
+   3,
+   "pending"
+  ],
+  [
+   "Kenji Watanabe",
+   3,
+   "Good refresher, but I was hoping for more depth on liquid cooling for high-density racks.",
+   4,
+   "pending"
+  ],
+  [
+   "Brianna Scott",
+   5,
+   "Put six new technicians through the operations bundle. They came onto the floor far better prepared.",
+   5,
+   "pending"
+  ],
+  [
+   "Gary Whitfield",
+   1,
+   "Paid for the bundle and two courses were missing from my account. Took a week to get fixed.",
+   6,
+   "pending"
+  ],
+  [
+   "Aisha Bello",
+   4,
+   "The NFPA 70E arc flash course was clear and well structured. Certificate arrived right away.",
+   7,
+   "pending"
+  ],
+  [
+   "Robert Hayes",
+   5,
+   "Best value data center training I have found. Self-paced worked perfectly around shift work.",
+   9,
+   "auto"
+  ],
+  [
+   "Sofia Mendes",
+   5,
+   "Great intro to critical facilities for someone coming from IT. Explained power distribution really well.",
+   12,
+   "auto"
+  ],
+  [
+   "James O'Connor",
+   4,
+   "Solid content on physical security. Some of the standards references could be updated.",
+   14,
+   "manual"
+  ],
+  [
+   "Hye-jin Park",
+   5,
+   "The design fundamentals course helped me prepare for my new role on the build team.",
+   17,
+   "auto"
+  ],
+  [
+   "Patrick Doyle",
+   2,
+   "Expected hands-on labs. It is all video and quizzes, which should be clearer before buying.",
+   19,
+   "manual"
+  ],
+  [
+   "Natalie Cruz",
+   5,
+   "Our whole NOC team took the operations courses. Clear, practical and affordable.",
+   22,
+   "auto"
+  ],
+  [
+   "Victor Alvarez",
+   5,
+   "",
+   25,
+   "auto"
+  ],
+  [
+   "Holly Pearson",
+   3,
+   "Useful material but the quizzes repeat a lot of the same questions.",
+   28,
+   "manual"
+  ],
+  [
+   "Samuel Osei",
+   5,
+   "The battery maintenance lessons were excellent. Helped me pass my internal assessment.",
+   33,
+   "auto"
+  ],
+  [
+   "Laura Nguyen",
+   4,
+   "Good coverage of cooling systems. Navigation between modules could be easier.",
+   38,
+   "manual"
+  ],
+  [
+   "Frank Miller",
+   5,
+   "The generator load testing module is the best explanation I have seen.",
+   42,
+   "replied"
+  ],
+  [
+   "Diane Foster",
+   1,
+   "My certificate had my name spelled wrong and it took ages to get it corrected.",
+   47,
+   "manual"
+  ],
+  [
+   "Carlos Ramirez",
+   5,
+   "Great for onboarding new facility techs. We use it for every new hire now.",
+   51,
+   "auto"
+  ],
+  [
+   "Megan Price",
+   4,
+   "Very good. Would love a course on commissioning.",
+   56,
+   "manual"
+  ],
+  [
+   "Ahmed Karim",
+   5,
+   "Clear, concise and relevant. The power chain course is fantastic.",
+   63,
+   "auto"
+  ],
+  [
+   "Julia Becker",
+   5,
+   "Support answered my question within an hour. Great courses.",
+   70,
+   "replied"
+  ],
+  [
+   "Steve Rogers",
+   3,
+   "Decent overview, a bit basic for experienced engineers.",
+   77,
+   "skipped"
+  ],
+  [
+   "Priyanka Iyer",
+   5,
+   "The fire suppression course was excellent and very practical.",
+   84,
+   "auto"
+  ],
+  [
+   "Tom Fletcher",
+   4,
+   "Good value bundle. Some videos could be shorter.",
+   91,
+   "manual"
+  ],
+  [
+   "Grace Okafor",
+   5,
+   "Helped me move from IT support into a data center technician role.",
+   99,
+   "replied"
+  ],
+  [
+   "Ian Murray",
+   2,
+   "Audio is quiet on a few of the older videos.",
+   106,
+   "manual"
+  ],
+  [
+   "Rebecca Lin",
+   5,
+   "Well organised and easy to follow on my phone during downtime.",
+   113,
+   "auto"
+  ],
+  [
+   "Hassan Ali",
+   5,
+   "Great explanations of redundancy tiers and N+1 designs.",
+   121,
+   "replied"
+  ],
+  [
+   "Chloe Martin",
+   4,
+   "Very helpful, especially the electrical safety content.",
+   130,
+   "manual"
+  ],
+  [
+   "Owen Davies",
+   5,
+   "Our team passed their safety audit after completing the courses.",
+   140,
+   "auto"
+  ],
+  [
+   "Yasmin Haddad",
+   5,
+   "Practical, affordable and to the point.",
+   152,
+   "replied"
+  ],
+  [
+   "Bill Turner",
+   3,
+   "Okay content. Some diagrams are low resolution.",
+   165,
+   "manual"
+  ],
+  [
+   "Nora Lindgren",
+   5,
+   "Recommended to everyone on my shift.",
+   178,
+   "auto"
+  ]
+ ],
+ "incoming": [
+  [
+   "Jamal Wright",
+   5,
+   "The cooling fundamentals course explained hot and cold aisle containment better than any manual we have."
+  ],
+  [
+   "Ingrid Larsen",
+   4,
+   "Great security course. A printable checklist would be a nice addition."
+  ],
+  [
+   "Pierre Laurent",
+   5,
+   "Formation très claire et pratique. Merci !"
+  ],
+  [
+   "Donna Harper",
+   1,
+   "My certificate never arrived after finishing the arc flash course."
+  ],
+  [
+   "Wei Zhang",
+   5,
+   ""
+  ],
+  [
+   "Mike Sullivan",
+   3,
+   "Good content, but the bundle pricing page was confusing."
+  ],
+  [
+   "Fatima Noor",
+   5,
+   "Perfect preparation for my first data center job."
+  ],
+  [
+   "Greg Hill",
+   2,
+   "The UPS course video stopped working halfway through module 4."
+  ]
+ ]
+}
