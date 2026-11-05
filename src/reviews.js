@@ -1,7 +1,7 @@
 import { config } from './runtime.js';
 import { all, first, run, audit, getSetting, setSetting, acquireLock, releaseLock } from './db.js';
 import { AppError } from './crypto.js';
-import { generateReply, MAX_REPLY_CHARS } from './openai.js';
+import { generateReply, noDashes, MAX_REPLY_CHARS } from './openai.js';
 import { getAppSettings, getGoogleConnection, getOpenAIKey, isDemoMode } from './settings.js';
 import * as google from './google.js';
 import { addIncomingDemoReview, clearDemoData } from './demo.js';
@@ -42,7 +42,7 @@ export async function draftReply(review, purpose = 'draft') {
  * The status flip to 'posting' is atomic, so double clicks or a concurrent auto-approve can't post twice.
  */
 export async function postReply(reviewId, text, { user = null, auto = false } = {}) {
-  const reply = String(text || '').trim();
+  const reply = noDashes(String(text || '').trim());
   if (!reply) throw new AppError('The reply is empty.');
   if (reply.length > MAX_REPLY_CHARS) throw new AppError(`Replies can be at most ${MAX_REPLY_CHARS} characters.`);
 

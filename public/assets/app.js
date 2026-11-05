@@ -822,7 +822,7 @@
       h('div', { class: 'card-head' }, h('div', {}, h('h2', {}, 'Reply style'), h('p', {}, 'Guides how the AI writes every reply.'))),
       h('div', { class: 'form-grid' },
         h('label', { class: 'field' }, h('span', {}, 'Business name'), bind(h('input', { class: 'input', value: s.businessName, maxlength: '120', placeholder: `e.g. ${document.body.dataset.business}` }), 'businessName')),
-        h('label', { class: 'field' }, h('span', {}, 'Sign-off (optional)'), bind(h('input', { class: 'input', value: s.signature, maxlength: '120', placeholder: 'e.g. — Sam, Owner' }), 'signature')),
+        h('label', { class: 'field' }, h('span', {}, 'Sign-off (optional)'), bind(h('input', { class: 'input', value: s.signature, maxlength: '120', placeholder: 'e.g. - Sam, Owner' }), 'signature')),
         h('label', { class: 'field', for: 'tone' }, h('span', {}, 'Tone'), toneSel),
         h('label', { class: 'field', for: 'len' }, h('span', {}, 'Length'), lenSel),
         h('label', { class: 'field full' }, h('span', {}, 'Extra instructions (optional)'),

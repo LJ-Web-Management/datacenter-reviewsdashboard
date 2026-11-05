@@ -8,7 +8,7 @@ const DATA = {
   seed: brandDemo?.seed || [],
   incoming: brandDemo?.incoming || [],
   thing: brandDemo?.thing || 'your visit',
-  signoff: brandDemo?.signoff || '— The team',
+  signoff: brandDemo?.signoff || '- The team',
 };
 
 function cannedReply(name, stars) {

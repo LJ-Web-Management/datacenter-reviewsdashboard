@@ -2,7 +2,7 @@
 import { getDb } from './runtime.js';
 import { randomToken, setSecretProvider } from './crypto.js';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -129,6 +129,10 @@ export async function ensureSchema() {
     /* tables don't exist yet */
   }
   const statements = SCHEMA.split(';').map((s) => s.trim()).filter(Boolean).map((s) => getDb().prepare(s));
+  // v2: replace em/en dashes in unposted drafts and demo replies (house style: hyphens only).
+  const dash = (col) => `REPLACE(REPLACE(REPLACE(REPLACE(${col}, ' \u2014 ', ' - '), '\u2014 ', '- '), '\u2014', ' - '), '\u2013', '-')`;
+  statements.push(getDb().prepare(`UPDATE reviews SET suggested_reply = ${dash('suggested_reply')} WHERE status IN ('pending', 'failed') AND suggested_reply IS NOT NULL`));
+  statements.push(getDb().prepare(`UPDATE reviews SET reply_text = ${dash('reply_text')}, suggested_reply = ${dash('suggested_reply')} WHERE source = 'demo'`));
   statements.push(getDb().prepare("INSERT INTO settings (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(String(SCHEMA_VERSION)));
   await batch(statements);
 }
