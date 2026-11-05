@@ -1,6 +1,6 @@
-import { config } from './config.js';
-import { db } from './db.js';
-import { AppError } from './security.js';
+import { config } from './runtime.js';
+import { run } from './db.js';
+import { AppError } from './crypto.js';
 import { getAppSettings, getModelPricing, getOpenAIKey, TONES, LENGTHS } from './settings.js';
 
 export const MAX_REPLY_CHARS = 4000; // Google allows ~4096 bytes per reply
@@ -58,10 +58,10 @@ export function computeCost(model, usage, settings) {
   return (uncached * p.input + cached * (p.cachedInput ?? p.input) + (usage.output || 0) * p.output) / 1e6;
 }
 
-function recordUsage(row) {
-  db.prepare(`INSERT INTO api_usage (created_at, model, purpose, review_id, input_tokens, cached_tokens, output_tokens, cost_usd, success, error, latency_ms)
-              VALUES (@created_at, @model, @purpose, @review_id, @input_tokens, @cached_tokens, @output_tokens, @cost_usd, @success, @error, @latency_ms)`)
-    .run(row);
+function recordUsage(r) {
+  return run(`INSERT INTO api_usage (created_at, model, purpose, review_id, input_tokens, cached_tokens, output_tokens, cost_usd, success, error, latency_ms)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  r.created_at, r.model, r.purpose, r.review_id, r.input_tokens, r.cached_tokens, r.output_tokens, r.cost_usd, r.success, r.error, r.latency_ms);
 }
 
 /**
@@ -69,10 +69,10 @@ function recordUsage(row) {
  * Every call, successful or not, is logged in api_usage with its token count and estimated cost.
  */
 export async function generateReply(review, { purpose = 'draft', reviewId = null, overrides = null } = {}) {
-  const apiKey = getOpenAIKey();
+  const apiKey = await getOpenAIKey();
   if (!apiKey) throw new AppError('Add your OpenAI API key in Settings (or set OPENAI_API_KEY) to draft replies.', 400);
 
-  const settings = { ...getAppSettings(), ...(overrides || {}) };
+  const settings = { ...(await getAppSettings()), ...(overrides || {}) };
   const model = settings.openaiModel;
   const body = {
     model,
@@ -92,7 +92,7 @@ export async function generateReply(review, { purpose = 'draft', reviewId = null
 
   let res, data;
   try {
-    res = await fetch(`${config.openaiBaseUrl}/responses`, {
+    res = await fetch(`${config().openaiBaseUrl}/responses`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -101,7 +101,7 @@ export async function generateReply(review, { purpose = 'draft', reviewId = null
     data = await res.json().catch(() => ({}));
   } catch (err) {
     const msg = err.name === 'TimeoutError' ? 'OpenAI request timed out.' : `Could not reach OpenAI: ${err.message}`;
-    recordUsage({ ...base, error: msg, latency_ms: Date.now() - started });
+    await recordUsage({ ...base, error: msg, latency_ms: Date.now() - started });
     throw new AppError(msg, 502);
   }
 
@@ -120,16 +120,16 @@ export async function generateReply(review, { purpose = 'draft', reviewId = null
 
   if (!res.ok) {
     const msg = data?.error?.message || `OpenAI returned HTTP ${res.status}`;
-    recordUsage({ ...logRow, error: msg.slice(0, 500) });
+    await recordUsage({ ...logRow, error: msg.slice(0, 500) });
     throw new AppError(`OpenAI: ${msg}`, res.status === 401 ? 400 : 502);
   }
 
   const text = extractText(data).trim().replace(/^["“]|["”]$/g, '').trim();
   if (!text) {
     const why = data.status === 'incomplete' ? `response was incomplete (${data.incomplete_details?.reason || 'unknown'})` : 'empty response';
-    recordUsage({ ...logRow, error: why });
+    await recordUsage({ ...logRow, error: why });
     throw new AppError(`OpenAI returned no reply: ${why}.`, 502);
   }
-  recordUsage({ ...logRow, success: 1 });
+  await recordUsage({ ...logRow, success: 1 });
   return text.slice(0, MAX_REPLY_CHARS);
 }

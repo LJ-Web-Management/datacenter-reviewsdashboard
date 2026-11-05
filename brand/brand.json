@@ -6,5 +6,6 @@
   "logo": "logo.png",
   "logoDark": "logo-dark.png",
   "favicon": "favicon.png",
-  "appleTouchIcon": "apple-touch-icon.png"
+  "appleTouchIcon": "apple-touch-icon.png",
+  "theme": "theme.css"
 }

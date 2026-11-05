@@ -1,22 +1,22 @@
-import { config } from './config.js';
-import { AppError, encrypt, decrypt } from './security.js';
+import { config } from './runtime.js';
+import { AppError, encrypt, decrypt, fromB64url } from './crypto.js';
 import { getGoogleConnection, setGoogleConnection } from './settings.js';
 
 const SCOPES = ['https://www.googleapis.com/auth/business.manage', 'openid', 'email'];
 const STAR = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
 export function isGoogleConfigured() {
-  return !!(config.googleClientId && config.googleClientSecret);
+  return !!(config().googleClientId && config().googleClientSecret);
 }
 
-export function redirectUri() {
-  return `${config.appUrl}/api/google/callback`;
+export function redirectUri(baseUrl) {
+  return `${baseUrl}/api/google/callback`;
 }
 
-export function authUrl(state) {
+export function authUrl(state, baseUrl) {
   const params = new URLSearchParams({
-    client_id: config.googleClientId,
-    redirect_uri: redirectUri(),
+    client_id: config().googleClientId,
+    redirect_uri: redirectUri(baseUrl),
     response_type: 'code',
     scope: SCOPES.join(' '),
     access_type: 'offline',
@@ -31,7 +31,7 @@ async function tokenRequest(params) {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: config.googleClientId, client_secret: config.googleClientSecret, ...params }),
+    body: new URLSearchParams({ client_id: config().googleClientId, client_secret: config().googleClientSecret, ...params }),
     signal: AbortSignal.timeout(30_000),
   });
   const data = await res.json().catch(() => ({}));
@@ -45,29 +45,29 @@ async function tokenRequest(params) {
 
 let accessCache = { token: null, expiresAt: 0 };
 
-export async function exchangeCode(code) {
-  const data = await tokenRequest({ code, grant_type: 'authorization_code', redirect_uri: redirectUri() });
+export async function exchangeCode(code, baseUrl) {
+  const data = await tokenRequest({ code, grant_type: 'authorization_code', redirect_uri: redirectUri(baseUrl) });
   if (!data.refresh_token) throw new AppError('Google did not return a refresh token. Remove the app at myaccount.google.com/permissions and connect again.', 502);
   let email = null;
   if (data.id_token) {
     // The ID token came straight from Google's token endpoint over TLS, so its payload can be read without re-verifying.
-    try { email = JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64url').toString()).email || null; } catch { /* ignore */ }
+    try { email = JSON.parse(new TextDecoder().decode(fromB64url(data.id_token.split('.')[1]))).email || null; } catch { /* ignore */ }
   }
   accessCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
-  return { refreshTokenEnc: encrypt(data.refresh_token), email };
+  return { refreshTokenEnc: await encrypt(data.refresh_token), email };
 }
 
 async function accessToken() {
   if (accessCache.token && accessCache.expiresAt > Date.now()) return accessCache.token;
-  const conn = getGoogleConnection();
+  const conn = await getGoogleConnection();
   if (!conn?.refreshTokenEnc) throw new AppError('Google is not connected.', 400);
   try {
-    const data = await tokenRequest({ refresh_token: decrypt(conn.refreshTokenEnc), grant_type: 'refresh_token' });
+    const data = await tokenRequest({ refresh_token: await decrypt(conn.refreshTokenEnc), grant_type: 'refresh_token' });
     accessCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
     return accessCache.token;
   } catch (err) {
     if (err.googleError === 'invalid_grant') {
-      setGoogleConnection({ ...conn, needsReconnect: true });
+      await setGoogleConnection({ ...conn, needsReconnect: true });
       throw new AppError('Google access was revoked or expired. Reconnect Google in Settings.', 400);
     }
     throw err;
@@ -94,11 +94,11 @@ export function clearAccessToken() {
 }
 
 export async function revoke() {
-  const conn = getGoogleConnection();
+  const conn = await getGoogleConnection();
   clearAccessToken();
   if (!conn?.refreshTokenEnc) return;
   try {
-    await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(decrypt(conn.refreshTokenEnc))}`, {
+    await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(await decrypt(conn.refreshTokenEnc))}`, {
       method: 'POST', signal: AbortSignal.timeout(10_000),
     });
   } catch { /* best effort */ }
@@ -144,7 +144,7 @@ function toMs(ts) {
 /**
  * Fetch reviews newest-updated first. Stops once it reaches reviews not updated since `sinceMs`.
  */
-export async function fetchReviews(accountName, locationName, { sinceMs = 0, maxPages = 20 } = {}) {
+export async function fetchReviews(accountName, locationName, { sinceMs = 0, maxPages = config().maxReviewPages } = {}) {
   const out = [];
   let pageToken = '';
   for (let page = 0; page < maxPages; page++) {

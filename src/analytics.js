@@ -1,4 +1,4 @@
-import { db } from './db.js';
+import { all, first } from './db.js';
 
 const DAY = 86_400_000;
 
@@ -60,7 +60,7 @@ function usageTotals(rows) {
   return t;
 }
 
-export function getAnalytics({ range = '30', tzOffset = 0 } = {}) {
+export async function getAnalytics({ range = '30', tzOffset = 0 } = {}) {
   const now = Date.now();
   const days = range === 'all' ? null : Math.min(Math.max(parseInt(range, 10) || 30, 1), 3650);
   const tz = Math.min(Math.max(parseInt(tzOffset, 10) || 0, -900), 900);
@@ -69,22 +69,22 @@ export function getAnalytics({ range = '30', tzOffset = 0 } = {}) {
   if (days) {
     from = now - days * DAY;
   } else {
-    const first = db.prepare('SELECT MIN(created_at) AS t FROM reviews').get().t;
-    const firstUse = db.prepare('SELECT MIN(created_at) AS t FROM api_usage').get().t;
-    from = Math.min(first ?? now, firstUse ?? now, now - 30 * DAY);
+    const firstReview = (await first('SELECT MIN(created_at) AS t FROM reviews')).t;
+    const firstUse = (await first('SELECT MIN(created_at) AS t FROM api_usage')).t;
+    from = Math.min(firstReview ?? now, firstUse ?? now, now - 30 * DAY);
   }
   const spanDays = (now - from) / DAY;
   const granularity = spanDays <= 31 ? 'day' : spanDays <= 120 ? 'week' : 'month';
 
-  const reviews = db.prepare('SELECT star_rating, status, auto_approved, created_at, reply_at FROM reviews WHERE created_at >= ?').all(from);
-  const usage = db.prepare('SELECT * FROM api_usage WHERE created_at >= ?').all(from);
+  const reviews = (await all('SELECT star_rating, status, auto_approved, created_at, reply_at FROM reviews WHERE created_at >= ?', from));
+  const usage = (await all('SELECT * FROM api_usage WHERE created_at >= ?', from));
 
   // Previous period of equal length, for deltas.
   let previous = null;
   if (days) {
     const prevFrom = from - days * DAY;
-    const prevReviews = db.prepare('SELECT star_rating, status, created_at, reply_at FROM reviews WHERE created_at >= ? AND created_at < ?').all(prevFrom, from);
-    const prevUsage = db.prepare('SELECT * FROM api_usage WHERE created_at >= ? AND created_at < ?').all(prevFrom, from);
+    const prevReviews = (await all('SELECT star_rating, status, created_at, reply_at FROM reviews WHERE created_at >= ? AND created_at < ?', prevFrom, from));
+    const prevUsage = (await all('SELECT * FROM api_usage WHERE created_at >= ? AND created_at < ?', prevFrom, from));
     previous = { ...reviewStats(prevReviews), costUsd: usageTotals(prevUsage).costUsd };
   }
 
@@ -129,22 +129,22 @@ export function getAnalytics({ range = '30', tzOffset = 0 } = {}) {
 
   // Costs
   const totals = usageTotals(usage);
-  const repliesPosted = db.prepare(`SELECT COUNT(*) AS n FROM reviews WHERE status = 'posted' AND reply_at >= ?`).get(from).n;
-  const allTime = db.prepare('SELECT COALESCE(SUM(cost_usd), 0) AS c, COUNT(*) AS n FROM api_usage').get();
+  const repliesPosted = (await first(`SELECT COUNT(*) AS n FROM reviews WHERE status = 'posted' AND reply_at >= ?`, from)).n;
+  const allTime = (await first('SELECT COALESCE(SUM(cost_usd), 0) AS c, COUNT(*) AS n FROM api_usage'));
   const d = new Date(now - tz * 60_000);
   const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) + tz * 60_000;
-  const mtd = db.prepare('SELECT COALESCE(SUM(cost_usd), 0) AS c FROM api_usage WHERE created_at >= ?').get(monthStart).c;
-  const last30 = db.prepare('SELECT COALESCE(SUM(cost_usd), 0) AS c, MIN(created_at) AS first FROM api_usage WHERE created_at >= ?').get(now - 30 * DAY);
+  const mtd = (await first('SELECT COALESCE(SUM(cost_usd), 0) AS c FROM api_usage WHERE created_at >= ?', monthStart)).c;
+  const last30 = (await first('SELECT COALESCE(SUM(cost_usd), 0) AS c, MIN(created_at) AS first FROM api_usage WHERE created_at >= ?', now - 30 * DAY));
   const observedDays = last30.first ? Math.max(1, (now - last30.first) / DAY) : 0;
   const projectedMonthly = observedDays ? (last30.c / Math.min(30, observedDays)) * 30 : 0;
 
-  const byModel = db.prepare(`SELECT model, COUNT(*) AS requests, SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens,
+  const byModel = (await all(`SELECT model, COUNT(*) AS requests, SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens,
                                      COALESCE(SUM(cost_usd), 0) AS costUsd, SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failed
-                              FROM api_usage WHERE created_at >= ? GROUP BY model ORDER BY costUsd DESC`).all(from);
-  const byPurpose = db.prepare(`SELECT purpose, COUNT(*) AS requests, COALESCE(SUM(cost_usd), 0) AS costUsd
-                                FROM api_usage WHERE created_at >= ? GROUP BY purpose ORDER BY costUsd DESC`).all(from);
-  const recentErrors = db.prepare(`SELECT created_at AS at, model, error FROM api_usage WHERE success = 0 AND created_at >= ?
-                                   ORDER BY created_at DESC LIMIT 5`).all(from);
+                              FROM api_usage WHERE created_at >= ? GROUP BY model ORDER BY costUsd DESC`, from));
+  const byPurpose = (await all(`SELECT purpose, COUNT(*) AS requests, COALESCE(SUM(cost_usd), 0) AS costUsd
+                                FROM api_usage WHERE created_at >= ? GROUP BY purpose ORDER BY costUsd DESC`, from));
+  const recentErrors = (await all(`SELECT created_at AS at, model, error FROM api_usage WHERE success = 0 AND created_at >= ?
+                                   ORDER BY created_at DESC LIMIT 5`, from));
 
   return {
     range: { key: days ? String(days) : 'all', from, to: now, granularity, tzOffset: tz },

@@ -4,22 +4,25 @@
   "private": true,
   "description": "datacentertraining.us admin panel that drafts Google review replies with OpenAI, auto-approves chosen ratings, and tracks review analytics and API costs.",
   "type": "module",
-  "main": "server/index.js",
+  "main": "src/node.js",
   "engines": {
     "node": ">=20.12"
   },
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node --watch server/index.js",
+    "start": "node src/node.js",
+    "dev": "node --watch src/node.js",
     "create-user": "node scripts/create-user.js",
-    "reset-password": "node scripts/create-user.js --reset"
+    "reset-password": "node scripts/create-user.js --reset",
+    "dev:cloudflare": "wrangler dev",
+    "deploy:cloudflare": "node scripts/cloudflare/deploy.mjs"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.6",
     "better-sqlite3": "^13.0.3",
-    "cookie-parser": "^1.4.7",
-    "express": "^5.3.0",
-    "express-rate-limit": "^8.7.3",
-    "helmet": "^8.3.0",
+    "hono": "^4.13.16",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.157.0"
   }
 }

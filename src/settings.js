@@ -1,6 +1,6 @@
-import { config } from './config.js';
-import { db, getSetting, setSetting } from './db.js';
-import { AppError, encrypt, decrypt } from './security.js';
+import { config } from './runtime.js';
+import { all, getSetting, setSetting } from './db.js';
+import { AppError, encrypt, decrypt } from './crypto.js';
 import { brand } from './brand.js';
 
 // USD per 1M tokens. Estimates only; edit them in Settings to match https://openai.com/api/pricing
@@ -29,26 +29,29 @@ export const LENGTHS = {
   long: 'one short paragraph (under 140 words)',
 };
 
-const DEFAULTS = {
-  businessName: brand.businessName || '',
-  tone: 'friendly',
-  replyLength: 'medium',
-  signature: '',
-  customInstructions: '',
-  autoDraft: true,
-  autoApprove: { enabled: false, stars: [5] },
-  syncIntervalMinutes: 15,
-  openaiModel: config.openaiModel,
-  pricing: {},
-};
-
-export function getAppSettings() {
-  const saved = getSetting('app', {});
+function defaults() {
   return {
-    ...DEFAULTS,
+    businessName: brand.businessName || '',
+    tone: 'friendly',
+    replyLength: 'medium',
+    signature: '',
+    customInstructions: '',
+    autoDraft: true,
+    autoApprove: { enabled: false, stars: [5] },
+    syncIntervalMinutes: 15,
+    openaiModel: config().openaiModel,
+    pricing: {},
+  };
+}
+
+export async function getAppSettings() {
+  const d = defaults();
+  const saved = (await getSetting('app', {})) || {};
+  return {
+    ...d,
     ...saved,
-    autoApprove: { ...DEFAULTS.autoApprove, ...(saved.autoApprove || {}) },
-    pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) },
+    autoApprove: { ...d.autoApprove, ...(saved.autoApprove || {}) },
+    pricing: { ...d.pricing, ...(saved.pricing || {}) },
   };
 }
 
@@ -62,9 +65,8 @@ function price(value) {
   return Math.round(n * 1e6) / 1e6;
 }
 
-export function updateAppSettings(input) {
-  const current = getAppSettings();
-  const next = { ...current };
+export async function updateAppSettings(input) {
+  const next = { ...(await getAppSettings()) };
   if ('businessName' in input) next.businessName = str(input.businessName, 120);
   if ('tone' in input) {
     if (!TONES[input.tone]) throw new AppError('Unknown tone.');
@@ -101,13 +103,13 @@ export function updateAppSettings(input) {
       [next.openaiModel]: { input: price(p.input), cachedInput: price(p.cachedInput ?? p.input), output: price(p.output) },
     };
   }
-  setSetting('app', next);
+  await setSetting('app', next);
   return next;
 }
 
 /** Price for a model: saved override, else built-in default (longest matching prefix), else null. */
-export function getModelPricing(model, settings = getAppSettings()) {
-  if (settings.pricing[model]) return settings.pricing[model];
+export function getModelPricing(model, settings) {
+  if (settings?.pricing?.[model]) return settings.pricing[model];
   if (DEFAULT_PRICING[model]) return DEFAULT_PRICING[model];
   const prefix = Object.keys(DEFAULT_PRICING)
     .filter((k) => model.startsWith(`${k}-`))
@@ -115,53 +117,46 @@ export function getModelPricing(model, settings = getAppSettings()) {
   return prefix ? DEFAULT_PRICING[prefix] : null;
 }
 
-// ---------- OpenAI key (env var wins; otherwise the encrypted key saved from the UI) ----------
+// ---------- OpenAI key (env/secret wins; otherwise the encrypted key saved from the UI) ----------
 
-export function getOpenAIKey() {
-  if (config.openaiApiKey) return config.openaiApiKey;
-  const enc = getSetting('openaiKeyEnc');
+export async function getOpenAIKey() {
+  if (config().openaiApiKey) return config().openaiApiKey;
+  const enc = await getSetting('openaiKeyEnc');
   if (!enc) return null;
   try {
-    return decrypt(enc);
+    return await decrypt(enc);
   } catch {
     return null;
   }
 }
 
-export function openAIKeyStatus() {
-  const key = getOpenAIKey();
+export async function openAIKeyStatus() {
+  const key = await getOpenAIKey();
   if (!key) return { configured: false, source: null, hint: null };
-  return { configured: true, source: config.openaiApiKey ? 'env' : 'saved', hint: `…${key.slice(-4)}` };
+  return { configured: true, source: config().openaiApiKey ? 'env' : 'saved', hint: `…${key.slice(-4)}` };
 }
 
-export function saveOpenAIKey(apiKey) {
+export async function saveOpenAIKey(apiKey) {
   const key = String(apiKey || '').trim();
-  if (!/^sk-[A-Za-z0-9_\-]{16,300}$/.test(key)) throw new AppError('That does not look like an OpenAI API key (it should start with "sk-").');
-  setSetting('openaiKeyEnc', encrypt(key));
+  if (!/^sk-[A-Za-z0-9_-]{16,300}$/.test(key)) throw new AppError('That does not look like an OpenAI API key (it should start with "sk-").');
+  await setSetting('openaiKeyEnc', await encrypt(key));
 }
 
-export function clearOpenAIKey() {
-  setSetting('openaiKeyEnc', null);
+export async function clearOpenAIKey() {
+  await setSetting('openaiKeyEnc', null);
 }
 
 // ---------- Google connection ----------
 
-export function getGoogleConnection() {
-  return getSetting('google', null);
+export const getGoogleConnection = () => getSetting('google', null);
+export const setGoogleConnection = (value) => setSetting('google', value);
+
+export async function isDemoMode() {
+  const g = await getGoogleConnection();
+  return config().demoMode && !(g && g.locationName);
 }
 
-export function setGoogleConnection(value) {
-  setSetting('google', value);
-}
-
-export function isDemoMode() {
-  const g = getGoogleConnection();
-  return config.demoMode && !(g && g.locationName);
-}
-
-export function countAutoApproveMatches(settings = getAppSettings()) {
-  if (!settings.autoApprove.stars.length) return 0;
-  const marks = settings.autoApprove.stars.map(() => '?').join(',');
-  return db.prepare(`SELECT COUNT(*) AS n FROM reviews WHERE status = 'pending' AND star_rating IN (${marks})`)
-    .get(...settings.autoApprove.stars).n;
+export async function pendingByStars() {
+  const rows = await all("SELECT star_rating AS stars, COUNT(*) AS n FROM reviews WHERE status = 'pending' GROUP BY star_rating");
+  return Object.fromEntries(rows.map((r) => [r.stars, r.n]));
 }

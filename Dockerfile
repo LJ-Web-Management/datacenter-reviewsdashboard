@@ -8,4 +8,4 @@ RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 EXPOSE 3000
 VOLUME ["/app/data"]
-CMD ["node", "server/index.js"]
+CMD ["node", "src/node.js"]

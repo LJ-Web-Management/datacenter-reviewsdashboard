@@ -8,16 +8,50 @@ A secure admin panel that pulls your Google reviews, drafts a reply to each one 
 - **Auto-approve**: pick which ratings (e.g. 4★ and 5★) get replied to automatically. Everything else waits for a person.
 - **Analytics**: review volume, rating distribution, average rating over time, response rate, median time to reply, and how replies were handled.
 - **OpenAI cost tracking**: every API call is logged with its token counts and an estimated cost. You get spend per day, week or month, cost per reply, month to date, a projected monthly spend, and a breakdown by model and by purpose.
-- **Security**: scrypt-hashed passwords, optional TOTP two-factor auth, brute-force lockout, HttpOnly session cookies, CSRF tokens, origin checks, a strict Content-Security-Policy, secrets encrypted at rest (AES-256-GCM), and an activity log.
+- **Security**: PBKDF2-hashed passwords, optional TOTP two-factor auth, brute-force lockout, HttpOnly session cookies, CSRF tokens, origin checks, a strict Content-Security-Policy, secrets encrypted at rest (AES-256-GCM), and an activity log.
 - **Team**: add or remove admin users.
 
-It's built with Node.js, Express and SQLite, with a plain HTML/JS frontend. There is no separate database server and no build step.
+It's built with [Hono](https://hono.dev) and a plain HTML/JS frontend. The same code runs in two places:
+
+- **Cloudflare Workers + D1** (recommended): no server to manage, free `*.workers.dev` URL, and a Cron Trigger syncs every few minutes.
+- **Node.js + SQLite**: on a laptop, VPS or Docker.
 
 ---
 
-## Quick start (local)
+## Deploy to Cloudflare
 
-Requires **Node.js 20.12+**.
+Every push to `main` deploys automatically through GitHub Actions (`.github/workflows/deploy-cloudflare.yml`). One-time setup:
+
+1. **Cloudflare API token.** Go to [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) → *Create Token* → use the **Edit Cloudflare Workers** template → *Add more* → **Account · D1 · Edit** → *Continue* → *Create Token*.
+2. If you've never used Workers, open **Workers & Pages** in the Cloudflare dashboard once so it creates your `workers.dev` subdomain.
+3. **GitHub secrets.** In this repo go to *Settings → Secrets and variables → Actions → New repository secret* and add:
+
+   | Secret | Value |
+   |---|---|
+   | `CLOUDFLARE_API_TOKEN` | the token from step 1 |
+   | `ADMIN_EMAIL` | your login email |
+   | `ADMIN_PASSWORD` | your login password (12+ characters) |
+   | `CLOUDFLARE_ACCOUNT_ID` | *optional:* only if the token can see more than one Cloudflare account |
+   | `OPENAI_API_KEY` | *optional:* you can paste the key in the dashboard's Settings instead |
+   | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | *optional:* when you're ready to connect Google |
+
+4. **Deploy:** *Actions → Deploy to Cloudflare → Run workflow* (or push any commit). The run's summary shows the live URL, e.g. `https://<repo-name>.<your-subdomain>.workers.dev`.
+
+The deploy creates a D1 database named `<repo-name>-db`, generates an `APP_SECRET` (the encryption key, kept as a Worker secret), and creates your admin login on first visit. Re-running is safe.
+
+To deploy from your own computer instead: `npx wrangler login`, then `npm run deploy:cloudflare` (set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in the environment the first time).
+
+**Custom domain:** in Cloudflare → Workers & Pages → your Worker → *Settings → Domains & Routes → Add → Custom domain* (e.g. `reviews.yourdomain.com`), then use that address for the Google redirect URI.
+
+**Limits on the free Workers plan:** each sync drafts up to 8 reviews and auto-posts up to 5 (the cron runs every 5 minutes, so a backlog clears quickly). Raise these with the `MAX_DRAFTS_PER_SYNC` / `MAX_AUTO_POSTS_PER_SYNC` variables on the paid plan. If sign-in ever fails with Cloudflare error 1102 (CPU limit), the Workers Paid plan ($5/month) removes it.
+
+To try the Cloudflare version locally: `npm run dev:cloudflare` (uses a local D1 database; put variables in `.dev.vars`).
+
+---
+
+## Quick start (Node.js, local)
+
+Requires **Node.js 20.12+**. This runs the app with a local SQLite file instead of Cloudflare.
 
 ```bash
 npm install
@@ -71,7 +105,7 @@ The app then syncs reviews on the interval set in Settings (default every 15 min
 
 ---
 
-## Deploying
+## Deploying on your own server (Node.js)
 
 Run it anywhere that runs Node or Docker (a VPS, Render, Railway, Fly.io…). Requirements:
 
@@ -167,7 +201,7 @@ powercfg /setactive SCHEME_CURRENT
 
 | Area | What's in place |
 |---|---|
-| Passwords | scrypt (N=2^15), 12+ characters, constant-time comparison; unknown emails still run a hash so timing doesn't reveal which accounts exist |
+| Passwords | PBKDF2-SHA256 (100,000 iterations, the Workers maximum), 12+ characters, constant-time comparison; unknown emails still run a hash so timing doesn't reveal which accounts exist |
 | Brute force | Per-email lockout after 5 failures (15 min, doubling), plus a per-IP rate limit on the login endpoint |
 | 2FA | TOTP (Google Authenticator, 1Password, Authy…), with replay protection |
 | Sessions | Random 256-bit tokens, stored hashed; `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`__Host-` prefix); 2-hour idle and 24-hour absolute timeout; a password change signs out other sessions |
@@ -183,20 +217,22 @@ powercfg /setactive SCHEME_CURRENT
 ## Project layout
 
 ```
-server/
-  index.js        Express app, security middleware, startup
-  config.js       Environment config
-  db.js           SQLite schema and helpers
-  security.js     Hashing, encryption, TOTP
-  auth.js         Sessions, CSRF, lockout, users
-  openai.js       Reply generation and usage/cost logging
-  google.js       OAuth and Business Profile API
-  reviews.js      Sync, drafting, auto-approve, posting
-  analytics.js    Analytics aggregation
-  demo.js         Sample data for demo mode
-  routes/         API routes
-public/
-  login.html, app.html
-  assets/         app.js, charts.js, app.css
-scripts/create-user.js
+src/
+  app.js            Routes, security headers, setup (Hono, runs on Workers and Node)
+  worker.js         Cloudflare Workers entry (HTTP + cron trigger)
+  node.js           Node.js entry (SQLite file, timer-based sync)
+  runtime.js        Config from env / Worker bindings
+  db.js             Schema and D1-style query helpers
+  sqlite-adapter.js Makes better-sqlite3 behave like D1 on Node
+  crypto.js         WebCrypto: password hashing, encryption, TOTP
+  auth.js           Sessions, CSRF, lockout, users
+  openai.js         Reply generation and usage/cost logging
+  google.js         OAuth and Business Profile API
+  reviews.js        Sync, drafting, auto-approve, posting
+  analytics.js      Analytics aggregation
+  demo.js, brand.js Demo data and branding
+public/             login.html, app.html (templates) and assets/ (app.js, charts.js, app.css)
+brand/              Logo, colours, demo data for this deployment
+scripts/            create-user.js, build-assets.mjs, cloudflare/deploy.mjs, windows/
+wrangler.jsonc      Cloudflare Workers config
 ```

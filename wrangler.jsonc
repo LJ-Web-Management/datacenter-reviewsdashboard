@@ -1,0 +1,17 @@
+{
+  // Cloudflare Workers config. `npm run deploy:cloudflare` (or the GitHub Action) fills in the
+  // real D1 database id and the Worker name for each repo, so this file stays the same everywhere.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "review-replies",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "build": { "command": "node scripts/build-assets.mjs" },
+  "assets": { "directory": "./dist" },
+  "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "review-replies-db", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ],
+  // Every 5 minutes; the app only syncs when the interval set in Settings has passed.
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true }
+}

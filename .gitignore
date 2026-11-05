@@ -1,3 +1,7 @@
 node_modules/
 data/
 .env
+dist/
+.wrangler/
+wrangler.deploy.jsonc
+.dev.vars
