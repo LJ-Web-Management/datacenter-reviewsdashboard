@@ -27,7 +27,7 @@ function fail(msg) {
   process.exit(1);
 }
 
-if (inCI && !env.CLOUDFLARE_API_TOKEN) {
+if (inCI && !env.CLOUDFLARE_API_TOKEN && !env.WORKERS_CI) {
   const msg = 'Skipping Cloudflare deploy: add a CLOUDFLARE_API_TOKEN secret to this repository (see README → Deploy to Cloudflare).';
   console.log(env.GITHUB_ACTIONS ? `::notice::${msg}` : msg);
   process.exit(0);
